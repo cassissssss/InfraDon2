@@ -1,0 +1,23 @@
+{
+    "_id": "1",
+    "post_name":"Voyage",
+    "post_content": "Mes vacances à Paris",
+    "attributes": {
+        "creation_date": "today",
+        "author": "Christel"
+    },
+    "comments": [
+        {
+            "comment": "Trop beau",
+            "author": "Doriane"
+        },
+        {
+            "comment": "Wow, je suis jalouse !!",
+            "author": "Anna"
+        },
+        {
+            "comment": "Bonnes vacances !",
+            "author": "Maman"
+        }
+    ]
+}
