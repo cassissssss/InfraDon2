@@ -1,15 +1,31 @@
-<template>
-  <div class="about">
-    <h1>youpi</h1>
-  </div>
-</template>
+<script lang="ts">
 
-<style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
+export default {
+  data() {
+    return {
+      datas: [],
+      databaseReference: null,
+    };
+  },
+  methods: {
+    inc() {
+      // old
+      // this.total++;
+    },
+    initDatabase() {
+    },
+    fetchData() {
+    }
+  },
+  mounted() {
+    this.initDatabase()
   }
 }
-</style>
+</script>
+<template>
+  <h1>InfraDon2</h1>
+  <p>Counter: {{ datas }}</p>
+  <button type="button" role="button" @click="inc">
+    +1
+  </button>
+</template>
