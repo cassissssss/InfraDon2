@@ -1,6 +1,7 @@
 <script lang="ts">
 import { ref } from 'vue';
 
+
 declare interface Comment {
   comment: string,
   author: string
@@ -23,6 +24,7 @@ export default {
     return {
       postsData: [] as Post[],
       storage: null as PouchDB.Database | null,
+      remoteDb: null as PouchDB.Database | null,
       isEditing: false,
       isAdding: false,
       addForm: {
@@ -53,14 +55,40 @@ export default {
 
   methods: {
     initDatabase() {
-      const db = new PouchDB('http://localhost:5984/commentaires_data');
-      this.storage = db;
+      // Initialiser les bases de données locales et distantes
+      this.storage = new PouchDB('commentaires_data');
+      this.remoteDb = new PouchDB('http://localhost:5984/commentaires_data');
+
+      // Configurer la synchronisation en direct
+      PouchDB.sync(this.storage, this.remoteDb, {
+        live: true,
+        retry: true
+      })
+      .on('change', (info) => {
+        console.log('Changement détecté dans la synchronisation :', info);
+        this.fetchData(); // Actualiser les données après un changement
+      })
+      .on('paused', (err) => {
+        console.log('Synchronisation en pause :', err || 'à jour');
+      })
+      .on('active', () => {
+        console.log('Synchronisation active');
+      })
+      .on('denied', (err) => {
+        console.error('Synchronisation refusée :', err);
+      })
+      .on('complete', (info) => {
+        console.log('Synchronisation complète :', info);
+      })
+      .on('error', (err) => {
+        console.error('Erreur de synchronisation :', err);
+      });
     },
 
     fetchData() {
-      const storage = ref(this.storage);
-      if (storage.value) {
-        storage.value.allDocs({
+      const storage = this.storage;
+      if (storage) {
+        storage.allDocs({
           include_docs: true,
           attachments: true
         }).then((result: any) => {
@@ -76,14 +104,14 @@ export default {
             comments: row.doc.comments || []
           }));
         }).catch((error: any) => {
-          console.log('fetchData error', error);
+          console.log('Erreur lors de la récupération des données', error);
         });
       }
     },
 
     startAdd() {
       this.isAdding = true;
-      this.isEditing = false; // Assurez-vous que le formulaire d'édition est masqué
+      this.isEditing = false;
     },
 
     addDocument() {
@@ -102,13 +130,13 @@ export default {
     },
 
     putDocument(document: Post) {
-      const db = ref(this.storage).value;
+      const db = this.storage;
       if (db) {
         db.put(document).then(() => {
-          console.log('Add ok');
+          console.log('Document ajouté avec succès');
           this.fetchData();
         }).catch((error) => {
-          console.log('Add ko', error);
+          console.log('Erreur lors de l\'ajout du document', error);
         });
       }
     },
@@ -151,25 +179,25 @@ export default {
         comments: post.comments || []
       };
       this.isEditing = true;
-      this.isAdding = false; // Assurez-vous que le formulaire d'ajout est masqué
+      this.isAdding = false;
     },
 
     deleteDocument(post: Post) {
-      const db = ref(this.storage).value;
+      const db = this.storage;
       if (db && post._id && post._rev) {
         db.remove(post._id, post._rev).then(() => {
-          console.log('Delete ok');
+          console.log('Document supprimé avec succès');
           this.fetchData();
         }).catch((error) => {
-          console.log('Delete ko', error);
+          console.log('Erreur lors de la suppression du document', error);
         });
       } else {
-        console.log('Erreur : document _id ou _rev manquant pour la suppression');
+        console.log('Erreur : _id ou _rev manquant pour la suppression');
       }
     },
 
     saveEdit() {
-      const db = ref(this.storage).value;
+      const db = this.storage;
       if (db && this.editForm._id && this.editForm._rev) {
         const updatedDoc: Post = {
           _id: this.editForm._id,
@@ -187,7 +215,7 @@ export default {
           this.fetchData();
           this.cancelEdit();
         }).catch((error) => {
-          console.log('Erreur de mise à jour', error);
+          console.log('Erreur lors de la mise à jour du document', error);
         });
       }
     },
