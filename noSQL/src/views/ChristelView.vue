@@ -131,6 +131,14 @@ export default {
       this.addForm.comments.splice(index, 1);
     },
 
+    addCommentEdit() {
+      this.editForm.comments.push({ comment: '', author: '' });
+    },
+
+    deleteCommentEdit(index: number) {
+      this.editForm.comments.splice(index, 1);
+    },
+
     startEdit(post: Post) {
       this.editForm = { 
         post_name: post.post_name, 
@@ -264,7 +272,10 @@ export default {
 
         <label :for="'edit_author_comment' + index">Auteur du commentaire :</label>
         <input type="text" v-model="comment.author" :id="'edit_author_comment' + index" required />
+
+        <button type="button" @click="deleteCommentEdit(index)">Supprimer le commentaire</button>
       </div>
+      <button type="button" @click="addCommentEdit">Ajouter un commentaire</button>
 
       <button type="submit">Enregistrer</button>
       <button type="button" @click="cancelEdit">Annuler</button>
