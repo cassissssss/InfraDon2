@@ -128,6 +128,35 @@ export default {
           });
       }
     },
+    async synchronizeBoth() {
+      try {
+        const db = ref(this.storage).value;
+        if (db) {
+          // Synchroniser depuis le serveur d'abord
+          await db.replicate.from(this.remoteDB)
+            .on('complete', () => {
+              console.log('Synchronisation depuis le serveur terminée');
+              this.fetchData();
+            })
+            .on('error', (error) => {
+              console.log('Erreur lors de la synchronisation depuis le serveur:', error);
+            });
+
+          // Puis synchroniser vers le serveur
+          await db.replicate.to(this.remoteDB)
+            .on('complete', () => {
+              console.log('Synchronisation vers le serveur terminée');
+            })
+            .on('error', (error) => {
+              console.log('Erreur lors de la synchronisation vers le serveur:', error);
+            });
+
+          console.log('Synchronisation bidirectionnelle terminée');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la synchronisation bidirectionnelle:', error);
+      }
+    },
  
     watchRemoteDatabase() {
       const db = ref(this.storage).value;
@@ -276,6 +305,9 @@ export default {
         </button>
         <button class="btn sync" @click="updateDistantDatabase">
           <span class="icon">↑</span> Synchroniser vers le serveur
+        </button>
+        <button class="btn sync-both" @click="synchronizeBoth">
+          <span class="icon">↕</span> Synchronisation bidirectionnelle
         </button>
       </div>
     </header>
@@ -450,6 +482,11 @@ export default {
  
 .sync {
   background-color: var(--primary-color);
+  color: white;
+}
+
+.sync-both {
+  background-color: #9b59b6; /* Couleur violette pour distinguer le nouveau bouton */
   color: white;
 }
  
