@@ -1,6 +1,8 @@
 <script lang="ts">
 import { ref } from 'vue';
 import PouchDB from 'pouchdb';
+import PouchDBFind from 'pouchdb-find';
+PouchDB.plugin(PouchDBFind);
  
 // Interfaces existantes
 declare interface Comment {
@@ -19,7 +21,7 @@ declare interface Post {
   },
   comments: Comment[];
 }
- 
+
 export default {
   data() {
     return {
@@ -29,6 +31,7 @@ export default {
       changes: null as any,
       isEditing: false,
       isAdding: false,
+      searchTitle: '',
       addForm: {
         post_name: '',
         post_content: '',
@@ -52,6 +55,7 @@ export default {
  
   mounted() {
     this.initDatabase();
+    this.createTitleIndex();
     this.fetchData();
     this.watchRemoteDatabase();
   },
@@ -63,6 +67,29 @@ export default {
   },
  
   methods: {
+    async searchByTitle(title: string) {
+      const db = ref(this.storage).value
+      if (!db) {
+        console.error('Database not valid')
+        return
+      }
+ 
+      try {
+        const result = await db.find({
+          selector: {
+            post_name: { $regex: new RegExp(`.*${title}.*`, 'i') } // Recherche exacte
+          }
+        })
+        console.log('Search results:', result.docs)
+        this.postsData = result.docs as Post[] // Met à jour les données affichées
+      } catch (error) {
+        console.error('Error searching by title:', error)
+      }
+    },
+    resetSearch() {
+      this.searchTitle = '' // Réinitialiser le champ de recherche
+      this.fetchData() // Recharger tous les documents
+    },
     // Initialisation de la base de données
     initDatabase() {
       const localDB = 'local-commentaires';
@@ -73,6 +100,35 @@ export default {
         console.warn('Something went wrong');
       }
       this.storage = $db;
+    },
+    async createTitleIndex() {
+      const db = ref(this.storage).value
+      if (!db) {
+        console.error('Database not valid')
+        return
+      }
+      try {
+        // Liste des index existants
+        const existingIndexes = await db.getIndexes()
+        const indexExists = existingIndexes.indexes.some(
+          (index) => index.name === 'post_name_index'
+        )
+ 
+        if (!indexExists) {
+          // Crée l'index uniquement s'il n'existe pas
+          await db.createIndex({
+            index: {
+              fields: ['post_name'],
+              name: 'post_name_index' // Nom explicite de l'index
+            }
+          })
+          console.log('Index on "post_name" created successfully')
+        } else {
+          console.log('Index on "post_name" already exists')
+        }
+      } catch (error) {
+        console.error('Error ensuring index:', error)
+      }
     },
  
     // Récupération des données
@@ -296,6 +352,14 @@ export default {
 </script>
  
 <template>
+    <div class="search-container">
+      <label for="title-search">Rechercher par titre :</label>
+      <div class="search-actions">
+        <input id="title-search" v-model="searchTitle" placeholder="Entrez un titre" />
+        <button @click="searchByTitle(searchTitle)" class="btn search-btn">Rechercher</button>
+        <button @click="resetSearch" class="btn cancel">Réinitialiser</button>
+      </div>
+</div>
   <div class="app-container">
     <header class="header">
       <h1 class="title">Gestion des Posts ({{ postsData.length }})</h1>
@@ -639,7 +703,84 @@ export default {
 .ucfirst {
   text-transform: capitalize;
 }
- 
+.search-container {
+  background: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.search-container label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.search-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#title-search {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius);
+  font-size: 1em;
+  color: white;
+  background-color: var(--text-color);
+}
+
+#title-search::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+#title-search:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.search-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.search-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .search-container {
+    padding: var(--spacing);
+  }
+  
+  .search-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  #title-search {
+    width: 100%;
+  }
+  
+  .search-btn, 
+  .cancel {
+    width: 100%;
+    padding: 6px 12px;
+    font-size: 0.9em;
+  }
+}
 /* Media queries pour la responsivité */
 @media (max-width: 768px) {
   .posts-list {
